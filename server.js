@@ -328,6 +328,218 @@ apiRouter.get("/health", (req, res) => {
 // Mount the API router at /api
 app.use("/api", apiRouter);
 
+// Serve a nice web page at the root that shows the current schedule
+app.get("/", async (req, res) => {
+  try {
+    const schedule = await Schedule.findOne().sort({ createdAt: -1 });
+
+    if (!schedule) {
+      return res.send(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Cleaning Schedule</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                   background: #f0f2f5; margin: 0; padding: 20px; }
+            .container { max-width: 400px; margin: 0 auto; background: white; 
+                        border-radius: 15px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .header { text-align: center; margin-bottom: 20px; }
+            .emoji { font-size: 2em; margin-bottom: 10px; }
+            .title { font-size: 1.5em; font-weight: bold; color: #1f2937; }
+            .message { text-align: center; color: #6b7280; font-size: 1.1em; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <div class="emoji">🧹</div>
+              <div class="title">Cleaning Schedule</div>
+            </div>
+            <div class="message">No schedule found. Please create one first.</div>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    const currentRotation = getCurrentRotation(
+      schedule.startDate,
+      schedule.people
+    );
+    const upcomingRotations = getUpcomingRotations(
+      schedule.startDate,
+      schedule.people,
+      5
+    );
+
+    const formatDateForWeb = (dateString) => {
+      const date = new Date(dateString);
+      const options = {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        timeZone: "UTC",
+      };
+      return date.toLocaleDateString("en-US", options);
+    };
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Cleaning Schedule</title>
+        <style>
+          * { box-sizing: border-box; }
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; padding: 20px; min-height: 100vh;
+          }
+          .container { 
+            max-width: 450px; margin: 0 auto; 
+            background: white; border-radius: 20px; 
+            overflow: hidden; box-shadow: 0 10px 15px rgba(0,0,0,0.2);
+          }
+          .header { 
+            background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+            color: white; padding: 25px 20px; text-align: center;
+          }
+          .header-emoji { font-size: 2.5em; margin-bottom: 10px; }
+          .header-title { font-size: 1.8em; font-weight: 600; margin: 0; }
+          .header-subtitle { opacity: 0.9; margin-top: 5px; font-size: 0.9em; }
+          
+          .message-container { padding: 20px; }
+          .message { 
+            background: #dcf8c6; border-radius: 15px 15px 5px 15px;
+            padding: 15px; margin-bottom: 15px; position: relative;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+          }
+          .message-header { 
+            font-weight: 600; color: #075e54; margin-bottom: 8px;
+            font-size: 1.1em; display: flex; align-items: center;
+          }
+          .message-emoji { margin-right: 8px; font-size: 1.2em; }
+          .message-content { color: #303030; line-height: 1.4; }
+          .message-content strong { color: #075e54; }
+          
+          .upcoming { 
+            background: #fff3cd; border-radius: 15px 15px 5px 15px;
+            padding: 15px; margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+          }
+          .upcoming::after {
+            content: ''; position: absolute; bottom: 0; right: -8px;
+            width: 0; height: 0; border-left: 8px solid #fff3cd;
+            border-bottom: 8px solid transparent;
+          }
+          
+          .upcoming-item { 
+            display: flex; align-items: center; padding: 4px 0;
+          }
+          .upcoming-item:last-child { border-bottom: none; }
+          .upcoming-name { font-weight: 600; color: #856404; margin-right: 8px; }
+          .upcoming-date { color: #6c757d; font-size: 0.9em; }
+          
+          .footer { 
+            padding: 15px 20px; background: #f8f9fa; 
+            text-align: center; color: #6c757d; font-size: 0.8em;
+            border-top: 1px solid #e9ecef;
+          }
+          .refresh-btn {
+            background: #25d366; color: white; border: none;
+            padding: 8px 16px; border-radius: 20px; cursor: pointer;
+            font-size: 0.9em; margin-top: 10px;
+          }
+          .refresh-btn:hover { background: #128c7e; }
+          
+          @media (max-width: 480px) {
+            .container { margin: 10px; border-radius: 15px; }
+            body { padding: 10px; }
+          }
+        </style>
+        <script>
+          function refreshSchedule() {
+            window.location.reload();
+          }
+          // Auto-refresh every 5 minutes
+          setTimeout(refreshSchedule, 300000);
+        </script>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="header-emoji">🧹</div>
+            <h1 class="header-title">Cleaning Schedule</h1>
+            <div class="header-subtitle">House cleaning rotation</div>
+          </div>
+          
+          <div class="message-container">
+            <div class="message">
+              <div class="message-header">
+                <span class="message-emoji">🎯</span>
+                Current Responsibility
+              </div>
+              <div class="message-content">
+                <strong>${
+                  currentRotation.currentPerson
+                }</strong> is responsible for cleaning<br>
+                📅 ${formatDateForWeb(
+                  currentRotation.periodStart
+                )} - ${formatDateForWeb(currentRotation.periodEnd)}<br>
+              </div>
+            </div>
+            
+            <div class="upcoming">
+              <div class="message-header">
+                <span class="message-emoji">🔮</span>
+                Upcoming Rotations
+              </div>
+              ${upcomingRotations
+                .map((rotation) => {
+                  return `
+                  <div class="upcoming-item">
+                    <span class="upcoming-name">${rotation.person}</span>
+                    <span class="upcoming-date">${formatDateForWeb(
+                      rotation.periodStart
+                    )} - ${formatDateForWeb(rotation.periodEnd)}</span>
+                  </div>
+                `;
+                })
+                .join("")}
+            </div>
+          </div>
+          
+          <div class="footer">
+            <div>Last updated: ${new Date().toLocaleString("en-US", {
+              timeZone: "Europe/Prague",
+            })}</div>
+            <button class="refresh-btn" onclick="refreshSchedule()">🔄 Refresh</button>
+            <div style="margin-top: 10px;">
+              <small>👥 ${schedule.people.join(" • ")}</small>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    res.send(html);
+  } catch (error) {
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html><head><title>Error</title></head>
+      <body style="font-family: Arial; text-align: center; padding: 50px;">
+        <h1>❌ Error</h1>
+        <p>Could not load cleaning schedule: ${error.message}</p>
+      </body></html>
+    `);
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
