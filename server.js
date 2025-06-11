@@ -378,7 +378,6 @@ app.get("/", async (req, res) => {
     const formatDateForWeb = (dateString) => {
       const date = new Date(dateString);
       const options = {
-        weekday: "long",
         month: "long",
         day: "numeric",
         timeZone: "UTC",
@@ -438,7 +437,7 @@ app.get("/", async (req, res) => {
           }
           
           .upcoming-item { 
-            display: flex; align-items: center; padding: 4px 0;
+            display: flex; align-items: center; justify-content: space-between; padding: 4px 0;
           }
           .upcoming-item:last-child { border-bottom: none; }
           .upcoming-name { font-weight: 600; color: #856404; margin-right: 8px; }
