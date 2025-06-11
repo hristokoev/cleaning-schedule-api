@@ -1,0 +1,174 @@
+# Cleaning Schedule API Documentation
+
+## Setup Instructions
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Environment Configuration
+
+1. Copy `.env.example` to `.env`
+2. Generate a secure API key (at least 32 characters)
+3. Update MongoDB URI if needed
+
+### 3. Start the Server
+
+```bash
+# Development mode with auto-restart
+npm run dev
+
+# Production mode
+npm start
+```
+
+## API Endpoints
+
+### Public Endpoints (No authentication required)
+
+#### GET /health
+
+Health check endpoint
+
+```bash
+curl http://localhost:3000/health
+```
+
+#### GET /schedule
+
+Get complete schedule information including current rotation and upcoming rotations
+
+```bash
+curl http://localhost:3000/schedule
+```
+
+#### GET /current
+
+Get current person responsible for cleaning
+
+```bash
+curl http://localhost:3000/current
+```
+
+### Protected Endpoints (Require API Key)
+
+All protected endpoints require the `X-API-Key` header:
+
+```bash
+curl -H "X-API-Key: your-api-key-here" ...
+```
+
+#### POST /schedule
+
+Create a new cleaning schedule
+
+```bash
+curl -X POST http://localhost:3000/schedule \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key-here" \
+  -d '{
+    "people": ["Alice", "Bob", "Charlie", "David", "Eve", "Frank"],
+    "startDate": "2024-03-17"
+  }'
+```
+
+#### PUT /schedule
+
+Update existing schedule (can update people array or start date)
+
+```bash
+curl -X PUT http://localhost:3000/schedule \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key-here" \
+  -d '{
+    "people": ["Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace"]
+  }'
+```
+
+#### DELETE /schedule
+
+Delete the current schedule
+
+```bash
+curl -X DELETE http://localhost:3000/schedule \
+  -H "X-API-Key: your-api-key-here"
+```
+
+## Response Examples
+
+### GET /current
+
+```json
+{
+  "currentPerson": "Alice",
+  "rotationNumber": 3,
+  "periodStart": "2024-04-15T00:00:00.000Z",
+  "periodEnd": "2024-04-28T23:59:59.999Z",
+  "isActive": true
+}
+```
+
+### GET /schedule
+
+```json
+{
+  "people": ["Alice", "Bob", "Charlie", "David", "Eve", "Frank"],
+  "startDate": "2024-03-17T00:00:00.000Z",
+  "currentRotation": {
+    "currentPerson": "Alice",
+    "currentPersonIndex": 0,
+    "rotationNumber": 3,
+    "periodStart": "2024-04-15T00:00:00.000Z",
+    "periodEnd": "2024-04-28T23:59:59.999Z",
+    "weeksSinceStart": 4,
+    "isActive": true
+  },
+  "upcomingRotations": [
+    {
+      "person": "Alice",
+      "rotationNumber": 3,
+      "periodStart": "2024-04-15T00:00:00.000Z",
+      "periodEnd": "2024-04-28T23:59:59.999Z",
+      "isCurrent": true
+    },
+    {
+      "person": "Bob",
+      "rotationNumber": 4,
+      "periodStart": "2024-04-29T00:00:00.000Z",
+      "periodEnd": "2024-05-12T23:59:59.999Z",
+      "isCurrent": false
+    }
+  ],
+  "createdAt": "2024-03-15T10:30:00.000Z",
+  "updatedAt": "2024-03-15T10:30:00.000Z"
+}
+```
+
+## How the Rotation System Works
+
+1. **Start Date**: The schedule begins on the specified start date
+2. **Week Alignment**: The system automatically aligns to Monday-Sunday weeks
+3. **2-Week Periods**: Each person is responsible for cleaning for exactly 2 weeks
+4. **Automatic Rotation**: After 2 weeks, responsibility moves to the next person in the array
+5. **Cycling**: When the last person finishes, it cycles back to the first person
+
+## Security Notes
+
+- Store your API key securely and never commit it to version control
+- Only you should have access to the API key
+- The API key is required for all create, update, and delete operations
+- Read operations (getting current schedule) are public and don't require authentication
+- Consider using HTTPS in production
+
+## Database
+
+The API uses MongoDB with a simple schema:
+
+- `people`: Array of names
+- `startDate`: When the rotation schedule begins
+- `createdAt`: When the schedule was created
+- `updatedAt`: When the schedule was last modified
+
+Only one active schedule is maintained at a time. Creating a new schedule will replace the existing one.
