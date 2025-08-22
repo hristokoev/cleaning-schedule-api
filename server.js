@@ -460,6 +460,7 @@ app.get("/", async (req, res) => {
             body { padding: 10px; }
           }
         </style>
+        <script defer src="https://umami.koev.cz/script.js" data-website-id="e8d3a665-143f-42a5-aaf7-32dc9c294431"></script>
         <script>
           function refreshSchedule() {
             window.location.reload();
