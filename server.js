@@ -540,6 +540,263 @@ app.get("/", async (req, res) => {
   }
 });
 
+// Add this route before the root "/" route in your Express app
+
+// E-ink optimized display route
+app.get("/eink", async (req, res) => {
+  try {
+    const schedule = await Schedule.findOne().sort({ createdAt: -1 });
+
+    if (!schedule) {
+      return res.send(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Cleaning Schedule</title>
+          <style>
+            body { 
+              font-family: 'Courier New', monospace; 
+              background: white;
+              color: black;
+              margin: 0;
+              padding: 40px;
+              font-size: 32px;
+              line-height: 1.6;
+            }
+            .container { 
+              max-width: 800px;
+              margin: 0 auto;
+              text-align: center;
+            }
+            h1 { 
+              font-size: 72px;
+              margin: 40px 0;
+              font-weight: bold;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>NO SCHEDULE</h1>
+            <p>Please create a schedule first</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    const currentRotation = getCurrentRotation(
+      schedule.startDate,
+      schedule.people
+    );
+    const upcomingRotations = getUpcomingRotations(
+      schedule.startDate,
+      schedule.people,
+      3 // Fewer rotations for e-ink display
+    );
+
+    const formatDateForEink = (dateString) => {
+      const date = new Date(dateString);
+      const options = {
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      };
+      return date.toLocaleDateString("en-US", options);
+    };
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Cleaning Schedule</title>
+        <style>
+          * { 
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+          }
+          body { 
+            font-family: 'Courier New', Courier, monospace; 
+            background: white;
+            color: black;
+            padding: 60px 40px;
+            font-size: 28px;
+            line-height: 1.5;
+          }
+          .container { 
+            max-width: 1000px;
+            margin: 0 auto;
+          }
+          
+          .header {
+            text-align: center;
+            margin-bottom: 80px;
+            padding-bottom: 40px;
+            border-bottom: 8px solid black;
+          }
+          .title { 
+            font-size: 96px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            letter-spacing: -2px;
+          }
+          .subtitle {
+            font-size: 36px;
+            margin-top: 10px;
+          }
+          
+          .current-section {
+            margin-bottom: 80px;
+            padding: 60px;
+            border: 8px solid black;
+            text-align: center;
+          }
+          .section-label {
+            font-size: 42px;
+            font-weight: bold;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+          }
+          .current-name {
+            font-size: 120px;
+            font-weight: bold;
+            margin: 40px 0;
+            line-height: 1.2;
+          }
+          .current-dates {
+            font-size: 48px;
+            margin-top: 30px;
+          }
+          
+          .upcoming-section {
+            margin-top: 60px;
+          }
+          .upcoming-title {
+            font-size: 42px;
+            font-weight: bold;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 4px solid black;
+            padding-bottom: 20px;
+          }
+          .upcoming-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px 0;
+            border-bottom: 2px solid black;
+            font-size: 40px;
+          }
+          .upcoming-item:last-child {
+            border-bottom: none;
+          }
+          .upcoming-name {
+            font-weight: bold;
+            flex: 0 0 40%;
+          }
+          .upcoming-dates {
+            flex: 0 0 55%;
+            text-align: right;
+            font-size: 36px;
+          }
+          
+          .footer {
+            margin-top: 80px;
+            padding-top: 40px;
+            border-top: 4px solid black;
+            text-align: center;
+            font-size: 28px;
+          }
+          
+          /* Print optimization for e-ink */
+          @media print {
+            body { padding: 40px; }
+          }
+        </style>
+        <script>
+          // Auto-refresh every 30 minutes for e-ink
+          setTimeout(() => window.location.reload(), 1800000);
+        </script>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="title">CLEANING</div>
+            <div class="subtitle">House Schedule</div>
+          </div>
+          
+          <div class="current-section">
+            <div class="section-label">Current Week</div>
+            <div class="current-name">${currentRotation.currentPerson}</div>
+            <div class="current-dates">
+              ${formatDateForEink(
+                currentRotation.periodStart
+              )} - ${formatDateForEink(currentRotation.periodEnd)}
+            </div>
+          </div>
+          
+          <div class="upcoming-section">
+            <div class="upcoming-title">Upcoming</div>
+            ${upcomingRotations
+              .map((rotation) => {
+                return `
+              <div class="upcoming-item">
+                <div class="upcoming-name">${rotation.person}</div>
+                <div class="upcoming-dates">${formatDateForEink(
+                  rotation.periodStart
+                )} - ${formatDateForEink(rotation.periodEnd)}</div>
+              </div>
+            `;
+              })
+              .join("")}
+          </div>
+          
+          <div class="footer">
+            Updated: ${new Date().toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "Europe/Prague",
+            })}
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    res.send(html);
+  } catch (error) {
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html><head><title>Error</title>
+      <style>
+        body { 
+          font-family: 'Courier New', monospace; 
+          background: white; 
+          color: black; 
+          text-align: center; 
+          padding: 100px 40px;
+          font-size: 48px;
+        }
+        h1 { font-size: 96px; margin-bottom: 40px; }
+      </style>
+      </head>
+      <body>
+        <h1>ERROR</h1>
+        <p>Could not load schedule</p>
+      </body></html>
+    `);
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
