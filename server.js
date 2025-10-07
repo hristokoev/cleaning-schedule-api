@@ -725,8 +725,8 @@ app.get("/eink", async (req, res) => {
           }
         </style>
         <script>
-          // Auto-refresh every 30 minutes for e-ink
-          setTimeout(() => window.location.reload(), 1800000);
+          // Auto-refresh every 5 seconds for e-ink
+          setTimeout(() => window.location.reload(), 1000 * 5);
         </script>
       </head>
       <body>
@@ -770,6 +770,7 @@ app.get("/eink", async (req, res) => {
               day: "numeric",
               hour: "2-digit",
               minute: "2-digit",
+              second: "2-digit",
               timeZone: "Europe/Prague",
             })}
           </div>
