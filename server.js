@@ -540,9 +540,7 @@ app.get("/", async (req, res) => {
   }
 });
 
-// Add this route before the root "/" route in your Express app
-
-// E-ink optimized display route
+// E-ink optimized display route - responsive for any e-reader
 app.get("/eink", async (req, res) => {
   try {
     const schedule = await Schedule.findOne().sort({ createdAt: -1 });
@@ -557,31 +555,24 @@ app.get("/eink", async (req, res) => {
           <title>Cleaning Schedule</title>
           <style>
             body { 
-              font-family: 'Courier New', monospace; 
+              font-family: Arial, sans-serif; 
               background: white;
               color: black;
               margin: 0;
-              padding: 40px;
-              font-size: 32px;
-              line-height: 1.6;
-            }
-            .container { 
-              max-width: 800px;
-              margin: 0 auto;
+              padding: 5vh 5vw;
+              font-size: 4vmin;
               text-align: center;
             }
             h1 { 
-              font-size: 72px;
-              margin: 40px 0;
+              font-size: 10vmin;
+              margin: 20vh 0 5vh 0;
               font-weight: bold;
             }
           </style>
         </head>
         <body>
-          <div class="container">
-            <h1>NO SCHEDULE</h1>
-            <p>Please create a schedule first</p>
-          </div>
+          <h1>NO SCHEDULE</h1>
+          <p>Please create a schedule first</p>
         </body>
         </html>
       `);
@@ -594,7 +585,7 @@ app.get("/eink", async (req, res) => {
     const upcomingRotations = getUpcomingRotations(
       schedule.startDate,
       schedule.people,
-      3 // Fewer rotations for e-ink display
+      3
     );
 
     const formatDateForEink = (dateString) => {
@@ -621,103 +612,116 @@ app.get("/eink", async (req, res) => {
             padding: 0;
           }
           body { 
-            font-family: 'Courier New', Courier, monospace; 
+            font-family: Arial, sans-serif; 
             background: white;
             color: black;
-            padding: 60px 40px;
-            font-size: 28px;
-            line-height: 1.5;
+            padding: 3vh 4vw;
+            font-size: 2.5vmin;
+            line-height: 1.4;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
           }
           .container { 
-            max-width: 1000px;
-            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
           }
           
           .header {
             text-align: center;
-            margin-bottom: 80px;
-            padding-bottom: 40px;
-            border-bottom: 8px solid black;
+            margin-bottom: 3vh;
+            padding-bottom: 2vh;
+            border-bottom: 0.5vh solid black;
+            flex-shrink: 0;
           }
           .title { 
-            font-size: 96px;
+            font-size: 8vmin;
             font-weight: bold;
-            margin-bottom: 20px;
-            letter-spacing: -2px;
+            margin-bottom: 1vh;
+            letter-spacing: -0.1vmin;
           }
           .subtitle {
-            font-size: 36px;
-            margin-top: 10px;
+            font-size: 3.2vmin;
+            margin-top: 0.5vh;
           }
           
           .current-section {
-            margin-bottom: 80px;
-            padding: 60px;
-            border: 8px solid black;
+            margin-bottom: 3vh;
+            padding: 3vh 3vw;
+            border: 0.5vh solid black;
             text-align: center;
+            flex-shrink: 0;
           }
           .section-label {
-            font-size: 42px;
+            font-size: 3.4vmin;
             font-weight: bold;
-            margin-bottom: 40px;
+            margin-bottom: 2vh;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 0.1vmin;
           }
           .current-name {
-            font-size: 120px;
+            font-size: 9vmin;
             font-weight: bold;
-            margin: 40px 0;
-            line-height: 1.2;
+            margin: 2vh 0;
+            line-height: 1.1;
           }
           .current-dates {
-            font-size: 48px;
-            margin-top: 30px;
+            font-size: 3.6vmin;
+            margin-top: 1.5vh;
           }
           
           .upcoming-section {
-            margin-top: 60px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
           }
           .upcoming-title {
-            font-size: 42px;
+            font-size: 3.4vmin;
             font-weight: bold;
-            margin-bottom: 40px;
+            margin-bottom: 2vh;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            border-bottom: 4px solid black;
-            padding-bottom: 20px;
+            letter-spacing: 0.1vmin;
+            border-bottom: 0.4vh solid black;
+            padding-bottom: 1vh;
+            flex-shrink: 0;
+          }
+          .upcoming-list {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
           }
           .upcoming-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 30px 0;
-            border-bottom: 2px solid black;
-            font-size: 40px;
+            padding: 1.8vh 0;
+            border-bottom: 0.2vh solid black;
+            font-size: 3.2vmin;
           }
           .upcoming-item:last-child {
             border-bottom: none;
           }
           .upcoming-name {
             font-weight: bold;
-            flex: 0 0 40%;
+            flex: 0 0 35%;
           }
           .upcoming-dates {
-            flex: 0 0 55%;
+            flex: 0 0 60%;
             text-align: right;
-            font-size: 36px;
+            font-size: 3vmin;
           }
           
           .footer {
-            margin-top: 80px;
-            padding-top: 40px;
-            border-top: 4px solid black;
+            margin-top: auto;
+            padding-top: 2vh;
+            border-top: 0.3vh solid black;
             text-align: center;
-            font-size: 28px;
-          }
-          
-          /* Print optimization for e-ink */
-          @media print {
-            body { padding: 40px; }
+            font-size: 2.4vmin;
+            flex-shrink: 0;
           }
         </style>
         <script>
@@ -744,22 +748,24 @@ app.get("/eink", async (req, res) => {
           
           <div class="upcoming-section">
             <div class="upcoming-title">Upcoming</div>
-            ${upcomingRotations
-              .map((rotation) => {
-                return `
-              <div class="upcoming-item">
-                <div class="upcoming-name">${rotation.person}</div>
-                <div class="upcoming-dates">${formatDateForEink(
-                  rotation.periodStart
-                )} - ${formatDateForEink(rotation.periodEnd)}</div>
-              </div>
-            `;
-              })
-              .join("")}
+            <div class="upcoming-list">
+              ${upcomingRotations
+                .map((rotation) => {
+                  return `
+                <div class="upcoming-item">
+                  <div class="upcoming-name">${rotation.person}</div>
+                  <div class="upcoming-dates">${formatDateForEink(
+                    rotation.periodStart
+                  )} - ${formatDateForEink(rotation.periodEnd)}</div>
+                </div>
+              `;
+                })
+                .join("")}
+            </div>
           </div>
           
           <div class="footer">
-            Updated: ${new Date().toLocaleDateString("en-US", {
+            ${new Date().toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               hour: "2-digit",
@@ -777,16 +783,17 @@ app.get("/eink", async (req, res) => {
     res.status(500).send(`
       <!DOCTYPE html>
       <html><head><title>Error</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
         body { 
-          font-family: 'Courier New', monospace; 
+          font-family: Arial, sans-serif; 
           background: white; 
           color: black; 
           text-align: center; 
-          padding: 100px 40px;
-          font-size: 48px;
+          padding: 20vh 5vw;
+          font-size: 4vmin;
         }
-        h1 { font-size: 96px; margin-bottom: 40px; }
+        h1 { font-size: 10vmin; margin-bottom: 3vh; }
       </style>
       </head>
       <body>
