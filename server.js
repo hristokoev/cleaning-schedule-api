@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const sharp = require("sharp");
 require("dotenv").config();
 
 const app = express();
@@ -540,42 +541,12 @@ app.get("/", async (req, res) => {
   }
 });
 
-// E-ink optimized display route - responsive for any e-reader
 app.get("/eink", async (req, res) => {
   try {
     const schedule = await Schedule.findOne().sort({ createdAt: -1 });
 
     if (!schedule) {
-      return res.send(`
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Cleaning Schedule</title>
-          <style>
-            body { 
-              font-family: Arial, sans-serif; 
-              background: white;
-              color: black;
-              margin: 0;
-              padding: 5vh 5vw;
-              font-size: 4vmin;
-              text-align: center;
-            }
-            h1 { 
-              font-size: 10vmin;
-              margin: 20vh 0 5vh 0;
-              font-weight: bold;
-            }
-          </style>
-        </head>
-        <body>
-          <h1>NO SCHEDULE</h1>
-          <p>Please create a schedule first</p>
-        </body>
-        </html>
-      `);
+      return res.status(404).send("No schedule found");
     }
 
     const currentRotation = getCurrentRotation(
@@ -590,218 +561,89 @@ app.get("/eink", async (req, res) => {
 
     const formatDateForEink = (dateString) => {
       const date = new Date(dateString);
-      const options = {
+      return date.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         timeZone: "UTC",
-      };
-      return date.toLocaleDateString("en-US", options);
+      });
     };
 
-    const html = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Cleaning Schedule</title>
-        <style>
-          * { 
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-          }
-          body { 
-            font-family: Arial, sans-serif; 
-            background: white;
-            color: black;
-            padding: 3vh 4vw;
-            font-size: 2.5vmin;
-            line-height: 1.4;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-          }
-          .container { 
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            width: 100%;
-          }
-          
-          .header {
-            text-align: center;
-            margin-bottom: 3vh;
-            padding-bottom: 2vh;
-            border-bottom: 0.5vh solid black;
-            flex-shrink: 0;
-          }
-          .title { 
-            font-size: 8vmin;
-            font-weight: bold;
-            margin-bottom: 1vh;
-            letter-spacing: -0.1vmin;
-          }
-          .subtitle {
-            font-size: 3.2vmin;
-            margin-top: 0.5vh;
-          }
-          
-          .current-section {
-            margin-bottom: 3vh;
-            padding: 3vh 3vw;
-            border: 0.5vh solid black;
-            text-align: center;
-            flex-shrink: 0;
-          }
-          .section-label {
-            font-size: 3.4vmin;
-            font-weight: bold;
-            margin-bottom: 2vh;
-            text-transform: uppercase;
-            letter-spacing: 0.1vmin;
-          }
-          .current-name {
-            font-size: 9vmin;
-            font-weight: bold;
-            margin: 2vh 0;
-            line-height: 1.1;
-          }
-          .current-dates {
-            font-size: 3.6vmin;
-            margin-top: 1.5vh;
-          }
-          
-          .upcoming-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-          }
-          .upcoming-title {
-            font-size: 3.4vmin;
-            font-weight: bold;
-            margin-bottom: 2vh;
-            text-transform: uppercase;
-            letter-spacing: 0.1vmin;
-            border-bottom: 0.4vh solid black;
-            padding-bottom: 1vh;
-            flex-shrink: 0;
-          }
-          .upcoming-list {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-evenly;
-          }
-          .upcoming-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.8vh 0;
-            border-bottom: 0.2vh solid black;
-            font-size: 3.2vmin;
-          }
-          .upcoming-item:last-child {
-            border-bottom: none;
-          }
-          .upcoming-name {
-            font-weight: bold;
-            flex: 0 0 35%;
-          }
-          .upcoming-dates {
-            flex: 0 0 60%;
-            text-align: right;
-            font-size: 3vmin;
-          }
-          
-          .footer {
-            margin-top: auto;
-            padding-top: 2vh;
-            border-top: 0.3vh solid black;
-            text-align: center;
-            font-size: 2.4vmin;
-            flex-shrink: 0;
-          }
-        </style>
-        <script>
-          // Auto-refresh every 5 seconds for e-ink
-          setTimeout(() => window.location.reload(), 1000 * 5);
-        </script>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <div class="title">CLEANING</div>
-            <div class="subtitle">House Schedule</div>
-          </div>
-          
-          <div class="current-section">
-            <div class="section-label">Current Week</div>
-            <div class="current-name">${currentRotation.currentPerson}</div>
-            <div class="current-dates">
-              ${formatDateForEink(
-                currentRotation.periodStart
-              )} - ${formatDateForEink(currentRotation.periodEnd)}
-            </div>
-          </div>
-          
-          <div class="upcoming-section">
-            <div class="upcoming-title">Upcoming</div>
-            <div class="upcoming-list">
-              ${upcomingRotations
-                .map((rotation) => {
-                  return `
-                <div class="upcoming-item">
-                  <div class="upcoming-name">${rotation.person}</div>
-                  <div class="upcoming-dates">${formatDateForEink(
-                    rotation.periodStart
-                  )} - ${formatDateForEink(rotation.periodEnd)}</div>
-                </div>
-              `;
-                })
-                .join("")}
-            </div>
-          </div>
-          
-          <div class="footer">
-            ${new Date().toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-              timeZone: "Europe/Prague",
-            })}
-          </div>
-        </div>
-      </body>
-      </html>
+    const currentDates = `${formatDateForEink(
+      currentRotation.periodStart
+    )} - ${formatDateForEink(currentRotation.periodEnd)}`;
+
+    const timestamp = new Date().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Europe/Prague",
+    });
+
+    // Create SVG with 758x1024 resolution
+    const svg = `
+      <svg width="758" height="1024" xmlns="http://www.w3.org/2000/svg">
+        <rect width="758" height="1024" fill="white"/>
+        
+        <!-- Header -->
+        <text x="379" y="100" font-family="Arial" font-size="70" font-weight="bold" text-anchor="middle" fill="black">CLEANING</text>
+        <text x="379" y="150" font-family="Arial" font-size="35" text-anchor="middle" fill="black">House Schedule</text>
+        <line x1="80" y1="180" x2="678" y2="180" stroke="black" stroke-width="5"/>
+        
+        <!-- Current Section Box -->
+        <rect x="80" y="220" width="598" height="280" fill="none" stroke="black" stroke-width="5"/>
+        <text x="379" y="270" font-family="Arial" font-size="32" font-weight="bold" text-anchor="middle" fill="black">CURRENT WEEK</text>
+        <text x="379" y="380" font-family="Arial" font-size="90" font-weight="bold" text-anchor="middle" fill="black">${
+          currentRotation.currentPerson
+        }</text>
+        <text x="379" y="460" font-family="Arial" font-size="32" text-anchor="middle" fill="black">${currentDates}</text>
+        
+        <!-- Upcoming Section -->
+        <text x="80" y="570" font-family="Arial" font-size="36" font-weight="bold" fill="black">UPCOMING</text>
+        <line x1="80" y1="585" x2="678" y2="585" stroke="black" stroke-width="4"/>
+        
+        ${upcomingRotations
+          .map((rotation, i) => {
+            const y = 650 + i * 80;
+            return `
+            <text x="100" y="${y}" font-family="Arial" font-size="32" font-weight="bold" fill="black">${
+              rotation.person
+            }</text>
+            <text x="658" y="${y}" font-family="Arial" font-size="28" text-anchor="end" fill="black">${formatDateForEink(
+              rotation.periodStart
+            )} - ${formatDateForEink(rotation.periodEnd)}</text>
+            ${
+              i < upcomingRotations.length - 1
+                ? `<line x1="100" y1="${y + 20}" x2="658" y2="${
+                    y + 20
+                  }" stroke="black" stroke-width="2"/>`
+                : ""
+            }
+          `;
+          })
+          .join("")}
+        
+        <!-- Footer -->
+        <line x1="80" y1="970" x2="678" y2="970" stroke="black" stroke-width="3"/>
+        <text x="379" y="1005" font-family="Arial" font-size="24" text-anchor="middle" fill="black">${timestamp}</text>
+      </svg>
     `;
 
-    res.send(html);
+    // Convert SVG to JPEG using Sharp
+    const buffer = await sharp(Buffer.from(svg))
+      .jpeg({ quality: 90 })
+      .toBuffer();
+
+    res.set("Content-Type", "image/jpeg");
+    res.set(
+      "Content-Disposition",
+      'attachment; filename="cleaning-schedule.jpg"'
+    );
+    res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.send(buffer);
   } catch (error) {
-    res.status(500).send(`
-      <!DOCTYPE html>
-      <html><head><title>Error</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body { 
-          font-family: Arial, sans-serif; 
-          background: white; 
-          color: black; 
-          text-align: center; 
-          padding: 20vh 5vw;
-          font-size: 4vmin;
-        }
-        h1 { font-size: 10vmin; margin-bottom: 3vh; }
-      </style>
-      </head>
-      <body>
-        <h1>ERROR</h1>
-        <p>Could not load schedule</p>
-      </body></html>
-    `);
+    console.error("Error generating image:", error);
+    res.status(500).send("Error generating image");
   }
 });
 
